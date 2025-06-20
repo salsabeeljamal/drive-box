@@ -12,12 +12,57 @@ export default function Dashboard() {
   const { isAuthenticated, loading, connectedProviders, logout, disconnectProvider } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>('');
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, { id: string; name: string }[]>>({
+    google: [],
+    dropbox: [],
+  });
+
+  const isAllSelected = (provider: 'google' | 'dropbox') => {
+    if (provider === 'google' && googleFiles) {
+      return selectedFiles.google.length === googleFiles.files.length;
+    }
+    if (provider === 'dropbox' && dropboxFiles) {
+      return selectedFiles.dropbox.length === dropboxFiles.files.length;
+    }
+    return false;
+  };
+
+  const handleSelectAll = (provider: 'google' | 'dropbox') => {
+    if (isAllSelected(provider)) {
+      setSelectedFiles(prev => ({ ...prev, [provider]: [] }));
+    } else {
+      if (provider === 'google' && googleFiles) {
+        setSelectedFiles(prev => ({
+          ...prev,
+          google: googleFiles.files.map(f => ({ id: f.id, name: f.name })),
+        }));
+      }
+      if (provider === 'dropbox' && dropboxFiles) {
+        setSelectedFiles(prev => ({
+          ...prev,
+          dropbox: dropboxFiles.files.map(f => ({ id: f.path_lower, name: f.name })),
+        }));
+      }
+    }
+  };
+
+  const handleSelectSingle = (provider: 'google' | 'dropbox', file: { id: string; name: string }) => {
+    setSelectedFiles(prev => {
+      const providerFiles = prev[provider] || [];
+      if (providerFiles.some(f => f.id === file.id)) {
+        return { ...prev, [provider]: providerFiles.filter(f => f.id !== file.id) };
+      } else {
+        return { ...prev, [provider]: [...providerFiles, file] };
+      }
+    });
+  };
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/');
     } else if (!loading && connectedProviders.length > 0) {
-      setActiveTab(connectedProviders[0].provider);
+      const initialTab = connectedProviders[0].provider;
+      setActiveTab(initialTab);
     }
   }, [isAuthenticated, loading, connectedProviders, router]);
 
@@ -60,6 +105,28 @@ export default function Dashboard() {
     }
   };
 
+  const handleBulkDownload = async () => {
+    if (activeTab !== 'google' && activeTab !== 'dropbox') return;
+
+    const filesToDownload = selectedFiles[activeTab];
+    if (filesToDownload.length === 0) return;
+
+    try {
+      let blob: Blob;
+      
+      if (activeTab === 'google') {
+        blob = await api.bulkDownloadGoogleFiles(filesToDownload);
+      } else {
+        // dropbox
+        blob = await api.bulkDownloadDropboxFiles(filesToDownload);
+      }
+      
+      downloadBlob(blob, `${activeTab}-files.zip`);
+    } catch (error) {
+      console.error('Bulk download failed:', error);
+    }
+  };
+
   const handleDisconnect = async (provider: string) => {
     try {
       await disconnectProvider(provider);
@@ -67,6 +134,7 @@ export default function Dashboard() {
         const remainingProviders = connectedProviders.filter(p => p.provider !== provider);
         setActiveTab(remainingProviders.length > 0 ? remainingProviders[0].provider : '');
       }
+      setSelectedFiles(prev => ({ ...prev, [provider]: [] }));
     } catch (error) {
       console.error('Disconnect failed:', error);
     }
@@ -132,12 +200,21 @@ export default function Dashboard() {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Google Drive Files</h2>
-                <button
-                  onClick={() => handleDisconnect('google')}
-                  className="text-red-500 hover:text-red-700 text-sm"
-                >
-                  Disconnect
-                </button>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={handleBulkDownload}
+                    disabled={selectedFiles.google.length === 0}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition-colors disabled:bg-gray-300"
+                  >
+                    Download Selected ({selectedFiles.google.length})
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect('google')}
+                    className="text-red-500 hover:text-red-700 text-sm"
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
               
               {googleLoading ? (
@@ -150,9 +227,24 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="flex items-center p-4 bg-gray-100 rounded-lg">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      checked={isAllSelected('google')}
+                      onChange={() => handleSelectAll('google')}
+                    />
+                    <div className="flex-1 ml-3 text-sm font-medium text-gray-700">Select All</div>
+                  </div>
                   {googleFiles?.files.map((file) => (
                     <div key={file.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          checked={selectedFiles.google.some(f => f.id === file.id)}
+                          onChange={() => handleSelectSingle('google', { id: file.id, name: file.name })}
+                        />
                         <span className="text-2xl">{getFileIcon(file.mimeType)}</span>
                         <div>
                           <h3 className="font-medium text-gray-900">{file.name}</h3>
@@ -229,12 +321,21 @@ export default function Dashboard() {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Dropbox Files</h2>
-                <button
-                  onClick={() => handleDisconnect('dropbox')}
-                  className="text-red-500 hover:text-red-700 text-sm"
-                >
-                  Disconnect
-                </button>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={handleBulkDownload}
+                    disabled={selectedFiles.dropbox.length === 0}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition-colors disabled:bg-gray-300"
+                  >
+                    Download Selected ({selectedFiles.dropbox.length})
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect('dropbox')}
+                    className="text-red-500 hover:text-red-700 text-sm"
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
               
               {dropboxLoading ? (
@@ -247,9 +348,26 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="flex items-center p-4 bg-gray-100 rounded-lg">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      checked={isAllSelected('dropbox')}
+                      onChange={() => handleSelectAll('dropbox')}
+                    />
+                    <div className="flex-1 ml-3 text-sm font-medium text-gray-700">Select All</div>
+                  </div>
                   {dropboxFiles?.files.map((file, index) => (
                     <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          checked={selectedFiles.dropbox.some(f => f.id === file.path_lower)}
+                          onChange={() =>
+                            handleSelectSingle('dropbox', { id: file.path_lower, name: file.name })
+                          }
+                        />
                         <span className="text-2xl">📄</span>
                         <div>
                           <h3 className="font-medium text-gray-900">{file.name || 'Unknown file'}</h3>

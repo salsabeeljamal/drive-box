@@ -67,7 +67,9 @@ defmodule DriveBox.MixProject do
       # JWT for custom authentication
       {:joken, "~> 2.6"},
       # CORS support for frontend integration
-      {:cors_plug, "~> 3.0"}
+      {:cors_plug, "~> 3.0"},
+      # Zip streaming for bulk downloads
+      {:zstream, "~> 0.6.4"}
     ]
   end
 

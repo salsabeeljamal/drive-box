@@ -79,6 +79,7 @@ defmodule DriveBoxWeb.Router do
       get "/files", APIController, :google_files
       get "/files/:file_id", APIController, :google_file
       post "/files/upload", APIController, :google_upload
+      post "/files/bulk_download", APIController, :google_bulk_download
     end
 
     # GitHub API
@@ -99,6 +100,7 @@ defmodule DriveBoxWeb.Router do
       post "/files/create_folder", APIController, :dropbox_create_folder
       delete "/files", APIController, :dropbox_delete
       get "/account", APIController, :dropbox_account_info
+      post "/files/bulk_download", APIController, :dropbox_bulk_download
     end
   end
 

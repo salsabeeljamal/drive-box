@@ -245,6 +245,24 @@ class DriveBoxAPI {
     return response.data;
   }
 
+  async bulkDownloadGoogleFiles(fileIds: { id: string; name: string }[]): Promise<Blob> {
+    const response = await this.api.post('/api/google/files/bulk_download', {
+      file_ids: fileIds
+    }, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
+  async bulkDownloadDropboxFiles(fileIds: { id: string; name: string }[]): Promise<Blob> {
+    const response = await this.api.post('/api/dropbox/files/bulk_download', {
+      file_ids: fileIds
+    }, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
   async uploadDropboxFile(path: string, file: File): Promise<DropboxFile> {
     const formData = new FormData();
     formData.append('file', file);

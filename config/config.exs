@@ -29,8 +29,8 @@ config :drive_box, DriveBoxWeb.Endpoint,
 # Custom OAuth provider configurations
 config :drive_box, :oauth_providers,
   google: [
-    client_id: System.get_env("GOOGLE_CLIENT_ID") || "955773518680-9049vfcbo7dkl2qs877tqf0qdjcsj7nf.apps.googleusercontent.com",
-    client_secret: System.get_env("GOOGLE_CLIENT_SECRET") || "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",
+    client_id: System.get_env("GOOGLE_CLIENT_ID"),
+    client_secret: System.get_env("GOOGLE_CLIENT_SECRET"),
     strategy: Assent.Strategy.Google,
     redirect_uri: "http://localhost:3000/auth/google/callback",
     authorization_params: [

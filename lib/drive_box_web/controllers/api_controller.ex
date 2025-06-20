@@ -560,6 +560,97 @@ defmodule DriveBoxWeb.APIController do
     end
   end
 
+  # Bulk Download endpoints
+  operation :google_bulk_download,
+    summary: "Bulk download Google Drive files",
+    tags: ["Google Drive"],
+    description: "Download multiple files from Google Drive as a ZIP archive",
+    request_body: {"File IDs to download", "application/json", %OpenApiSpex.Schema{
+      type: :object,
+      properties: %{
+        file_ids: %OpenApiSpex.Schema{
+          type: :array,
+          items: %OpenApiSpex.Schema{
+            type: :object,
+            properties: %{
+              id: %OpenApiSpex.Schema{type: :string, description: "File ID"},
+              name: %OpenApiSpex.Schema{type: :string, description: "File name"}
+            },
+            required: [:id, :name]
+          }
+        }
+      },
+      required: [:file_ids]
+    }},
+    responses: [
+      ok: {"ZIP file with requested files", "application/zip", %OpenApiSpex.Schema{type: :string, format: :binary}},
+      bad_request: {"Error response", "application/json", Schemas.Error},
+      unauthorized: {"Authentication required", "application/json", Schemas.Error}
+    ]
+
+  def google_bulk_download(conn, %{"file_ids" => file_ids}) do
+    with {:ok, user_identity} <- get_user_identity(conn, "google") do
+      case create_bulk_zip(user_identity.id, "google", file_ids) do
+        {:ok, zip_stream} ->
+          conn
+          |> put_resp_content_type("application/zip")
+          |> put_resp_header("content-disposition", "attachment; filename=\"google-files.zip\"")
+          |> send_chunked(200)
+          |> stream_zip_response(zip_stream)
+        
+        {:error, error} ->
+          conn
+          |> put_status(:bad_request)
+          |> json(%{error: error})
+      end
+    end
+  end
+
+  operation :dropbox_bulk_download,
+    summary: "Bulk download Dropbox files",
+    tags: ["Dropbox"],
+    description: "Download multiple files from Dropbox as a ZIP archive",
+    request_body: {"File paths to download", "application/json", %OpenApiSpex.Schema{
+      type: :object,
+      properties: %{
+        file_ids: %OpenApiSpex.Schema{
+          type: :array,
+          items: %OpenApiSpex.Schema{
+            type: :object,
+            properties: %{
+              id: %OpenApiSpex.Schema{type: :string, description: "File path"},
+              name: %OpenApiSpex.Schema{type: :string, description: "File name"}
+            },
+            required: [:id, :name]
+          }
+        }
+      },
+      required: [:file_ids]
+    }},
+    responses: [
+      ok: {"ZIP file with requested files", "application/zip", %OpenApiSpex.Schema{type: :string, format: :binary}},
+      bad_request: {"Error response", "application/json", Schemas.Error},
+      unauthorized: {"Authentication required", "application/json", Schemas.Error}
+    ]
+
+  def dropbox_bulk_download(conn, %{"file_ids" => file_ids}) do
+    with {:ok, user_identity} <- get_user_identity(conn, "dropbox") do
+      case create_bulk_zip(user_identity.id, "dropbox", file_ids) do
+        {:ok, zip_stream} ->
+          conn
+          |> put_resp_content_type("application/zip")
+          |> put_resp_header("content-disposition", "attachment; filename=\"dropbox-files.zip\"")
+          |> send_chunked(200)
+          |> stream_zip_response(zip_stream)
+        
+        {:error, error} ->
+          conn
+          |> put_status(:bad_request)
+          |> json(%{error: error})
+      end
+    end
+  end
+
   # Helper functions
   defp get_user_identity(conn, provider) do
     current_user = get_current_user(conn)
@@ -702,6 +793,51 @@ defmodule DriveBoxWeb.APIController do
     case Integer.parse(expires_in) do
       {seconds, _} -> parse_expires_at(seconds)
       :error -> nil
+    end
+  end
+
+  defp create_bulk_zip(user_identity_id, provider, file_ids) do
+    try do
+      files_stream = Stream.map(file_ids, fn %{"id" => id, "name" => name} ->
+        case download_file_for_zip(user_identity_id, provider, id) do
+          {:ok, content} ->
+            {name, content}
+          {:error, _error} ->
+            # Skip files that failed to download
+            nil
+        end
+      end)
+      |> Stream.filter(&(&1 != nil))
+
+      zip_stream = Zstream.zip(files_stream)
+      {:ok, zip_stream}
+    rescue
+      error ->
+        {:error, "Failed to create ZIP: #{inspect(error)}"}
+    end
+  end
+
+  defp download_file_for_zip(user_identity_id, "google", file_id) do
+    GoogleDriveAPI.download_file(user_identity_id, file_id)
+  end
+
+  defp download_file_for_zip(user_identity_id, "dropbox", path) do
+    DropboxAPI.download_file(user_identity_id, path)
+  end
+
+  defp stream_zip_response(conn, zip_stream) do
+    try do
+      Enum.reduce_while(zip_stream, conn, fn chunk, acc_conn ->
+        case Plug.Conn.chunk(acc_conn, chunk) do
+          {:ok, new_conn} -> {:cont, new_conn}
+          {:error, :closed} -> {:halt, acc_conn}
+        end
+      end)
+    rescue
+      error ->
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{error: "Streaming failed: #{inspect(error)}"})
     end
   end
 end 
