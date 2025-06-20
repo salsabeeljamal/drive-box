@@ -61,6 +61,7 @@ defmodule DriveBox.MixProject do
       {:ecto_sql, "~> 3.6"},
       {:postgrex, ">= 0.0.0"},
       # HTTP client for API calls
+      {:httpoison, "~> 2.0"},
       {:mint, "~> 1.0"},
       # API Documentation
       {:open_api_spex, "~> 3.17"},
