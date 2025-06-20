@@ -1,44 +1,36 @@
 # DriveBox - Third-Party Cloud Storage Integration
 
-A comprehensive API-first application built with Phoenix/Elixir that integrates with multiple cloud storage providers including Google Drive, GitHub, and Dropbox using OAuth2 authentication.
+A comprehensive full-stack application that integrates with multiple cloud storage providers including Google Drive, GitHub, and Dropbox using OAuth2 authentication. The system consists of a Phoenix/Elixir API backend and a modern Next.js frontend.
 
-## Features
+## 🏗️ Architecture
+
+**Backend (Phoenix/Elixir)**: Provides API-first architecture with unified endpoints for all cloud storage providers  
+**Frontend (Next.js/React)**: Modern web interface for seamless file management across all connected services
+
+## ✨ Features
 
 - **Multi-Provider Authentication**: Seamlessly connect with Google Drive, GitHub, and Dropbox using OAuth2
 - **Unified API**: Single API interface for all supported cloud storage providers
+- **Modern Web Interface**: Responsive React frontend with intuitive file management
 - **File Operations**: Upload, download, list, and manage files across all platforms
 - **Persistent Connections**: Once connected, maintain authentication across sessions
 - **RESTful API**: Clean, well-documented API endpoints for all operations
 - **Token Management**: Automatic token refresh and management
 
-## Supported Providers
+## 🚀 Quick Start
 
-### Google Drive
-- List files and folders
-- Upload/download files
-- File metadata retrieval
-- Folder operations
+### Prerequisites
 
-### GitHub
-- Repository management
-- File operations (read, create, update)
-- Repository contents listing
-- User profile information
-
-### Dropbox
-- File and folder operations
-- Upload/download files
-- Metadata retrieval
-- Account information
-
-## Prerequisites
-
+**Backend Requirements:**
 - Elixir 1.15+
 - Phoenix 1.8+
 - PostgreSQL 14+
-- Node.js 18+ (for assets)
 
-## Installation
+**Frontend Requirements:**
+- Node.js 18+
+- npm or yarn
+
+### Installation & Setup
 
 1. **Clone the repository**
    ```bash
@@ -46,14 +38,31 @@ A comprehensive API-first application built with Phoenix/Elixir that integrates 
    cd drive-box
    ```
 
-2. **Install dependencies**
+2. **Backend Setup**
    ```bash
+   # Install Elixir dependencies
    mix deps.get
+   
+   # Install Node.js dependencies for Phoenix assets
    npm install --prefix assets
+   
+   # Set up the database
+   mix ecto.create
+   mix ecto.migrate
    ```
 
-3. **Set up environment variables**
-   Create a `.env` file in the project root:
+3. **Frontend Setup**
+   ```bash
+   # Navigate to frontend directory
+   cd drive_box_frontend
+   
+   # Install frontend dependencies
+   npm install
+   ```
+
+4. **Environment Configuration**
+
+   **Backend (.env in project root):**
    ```env
    # Google Drive OAuth
    GOOGLE_CLIENT_ID=your_google_client_id
@@ -71,37 +80,141 @@ A comprehensive API-first application built with Phoenix/Elixir that integrates 
    DATABASE_URL=postgres://username:password@localhost/drive_box_dev
    ```
 
-4. **Set up OAuth Applications**
-
-   ### Google Drive
-   1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-   2. Create a new project or select existing
-   3. Enable Google Drive API
-   4. Create OAuth 2.0 credentials
-   5. Add `http://localhost:4000/auth/google/callback` to redirect URIs
-
-   ### GitHub
-   1. Go to GitHub Settings > Developer settings > OAuth Apps
-   2. Create a new OAuth App
-   3. Set Authorization callback URL to `http://localhost:4000/auth/github/callback`
-
-   ### Dropbox
-   1. Go to [Dropbox App Console](https://www.dropbox.com/developers/apps)
-   2. Create a new app
-   3. Add `http://localhost:4000/auth/dropbox/callback` to redirect URIs
-
-5. **Set up the database**
-   ```bash
-   mix ecto.create
-   mix ecto.migrate
+   **Frontend (.env.local in drive_box_frontend/):**
+   ```env
+   NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
    ```
 
-6. **Start the server**
-   ```bash
-   mix phx.server
-   ```
+5. **OAuth Application Setup**
 
-## API Documentation
+   See [OAUTH_SETUP.md](OAUTH_SETUP.md) for detailed OAuth configuration instructions for each provider.
+
+## 🏃 Running the Application
+
+### Development Mode
+
+**Start Backend (Terminal 1):**
+```bash
+# From project root
+mix phx.server
+# Backend runs on http://localhost:4000
+```
+
+**Start Frontend (Terminal 2):**
+```bash
+# From project root
+cd drive_box_frontend
+npm run dev
+# Frontend runs on http://localhost:3000
+```
+
+### Production Mode
+
+**Backend:**
+```bash
+MIX_ENV=prod mix phx.server
+```
+
+**Frontend:**
+```bash
+cd drive_box_frontend
+npm run build
+npm start
+```
+
+## 📱 Frontend Usage
+
+### Access the Application
+1. Open your browser to [http://localhost:3000](http://localhost:3000)
+2. Click "Connect" for any supported provider (Google Drive, GitHub, Dropbox)
+3. Complete OAuth authentication
+4. Access your files through the dashboard
+
+### Frontend Features
+- **Dashboard Interface**: Unified view of all connected services
+- **Provider Tabs**: Switch between Google Drive, GitHub, and Dropbox
+- **File Browser**: Browse files and folders with intuitive navigation
+- **Download Files**: Direct download from Google Drive and Dropbox
+- **Repository Access**: View and access GitHub repositories
+- **Account Management**: Connect/disconnect providers as needed
+
+### Frontend Tech Stack
+- **Next.js 14** with App Router
+- **TypeScript** for type safety
+- **Tailwind CSS** for styling
+- **React Query** for data fetching
+- **Axios** for API communication
+
+## 🔧 Backend API Usage
+
+### API Base URL
+```
+http://localhost:4000
+```
+
+### Authentication Flow
+
+#### 1. Initiate OAuth
+```http
+GET /auth/{provider}
+```
+**Providers**: `google`, `github`, `dropbox`
+
+#### 2. OAuth Callback (handled automatically)
+```http
+GET /auth/{provider}/callback?code=...&state=...
+```
+
+#### 3. Get Connected Providers
+```http
+GET /auth/
+Authorization: Bearer {token}
+```
+
+### API Examples
+
+#### Upload to Google Drive
+```bash
+curl -X POST http://localhost:4000/api/google/files/upload \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@/path/to/file.txt"
+```
+
+#### List GitHub Repositories
+```bash
+curl -X GET http://localhost:4000/api/github/repositories \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### Download from Dropbox
+```bash
+curl -X GET "http://localhost:4000/api/dropbox/files/download?path=/file.txt" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## 🌐 Supported Providers
+
+### Google Drive
+- ✅ List files and folders
+- ✅ Upload/download files
+- ✅ File metadata retrieval
+- ✅ Folder operations
+
+### GitHub
+- ✅ Repository management
+- ✅ File operations (read, create, update)
+- ✅ Repository contents listing
+- ✅ User profile information
+
+### Dropbox
+- ✅ File and folder operations
+- ✅ Upload/download files
+- ✅ Metadata retrieval
+- ✅ Account information
+
+## 📚 Detailed API Documentation
+
+For comprehensive API documentation including all endpoints and examples, see [SWAGGER_DOCUMENTATION.md](SWAGGER_DOCUMENTATION.md)
 
 ### Authentication Endpoints
 
@@ -284,107 +397,163 @@ GET /api/dropbox/account
 Authorization: Bearer {token}
 ```
 
-## Usage Examples
+## 🗂️ Project Structure
 
-### 1. Connect to Google Drive
-```bash
-# Get authorization URL
-curl -X GET http://localhost:4000/auth/google
-
-# User visits the URL and authorizes
-# Callback happens automatically
-# Use the returned token for subsequent API calls
+```
+drive_box/
+├── 🔧 Backend (Phoenix/Elixir)
+│   ├── lib/
+│   │   ├── drive_box/           # Core business logic
+│   │   │   ├── services/        # External API integrations
+│   │   │   └── users/           # User management
+│   │   └── drive_box_web/       # Web layer
+│   │       ├── controllers/     # API endpoints
+│   │       ├── auth/            # Authentication logic
+│   │       └── plugs/           # Middleware
+│   ├── config/                  # Configuration files
+│   ├── priv/                    # Database migrations
+│   └── test/                    # Test files
+│
+└── 🎨 Frontend (Next.js)
+    ├── src/
+    │   ├── app/                 # Next.js App Router
+    │   │   ├── auth/            # OAuth callback handling
+    │   │   ├── dashboard/       # Main dashboard
+    │   │   └── page.tsx         # Homepage
+    │   ├── contexts/            # React contexts
+    │   └── lib/                 # Utilities and API client
+    ├── public/                  # Static assets
+    └── tailwind.config.js       # Styling configuration
 ```
 
-### 2. Upload file to Google Drive
+## 🧪 Development & Testing
+
+### Backend Development
 ```bash
-curl -X POST http://localhost:4000/api/google/files/upload \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@/path/to/local/file.txt"
-```
-
-### 3. List GitHub repositories
-```bash
-curl -X GET http://localhost:4000/api/github/repositories \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-### 4. Upload file to Dropbox
-```bash
-curl -X POST http://localhost:4000/api/dropbox/files/upload \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "path=/uploaded_file.txt" \
-  -F "file=@/path/to/local/file.txt"
-```
-
-## Architecture
-
-### Core Components
-
-- **Authentication Layer**: Handles OAuth2 flows for all providers
-- **Service Layer**: Implements provider-specific API clients
-- **API Layer**: Provides unified REST endpoints
-- **Database Layer**: Stores user data and authentication tokens
-
-### Key Modules
-
-- `DriveBox.Users.User`: User management
-- `DriveBox.Users.UserIdentity`: Provider authentication storage
-- `DriveBox.Services.GoogleDriveAPI`: Google Drive integration
-- `DriveBox.Services.GitHubAPI`: GitHub integration
-- `DriveBox.Services.DropboxAPI`: Dropbox integration
-- `DriveBoxWeb.AuthController`: Authentication endpoints
-- `DriveBoxWeb.APIController`: Unified API endpoints
-
-## Development
-
-### Running Tests
-```bash
+# Run tests
 mix test
-```
 
-### Code Formatting
-```bash
+# Code formatting
 mix format
-```
 
-### Database Operations
-```bash
-# Create database
+# Database operations
 mix ecto.create
-
-# Run migrations
 mix ecto.migrate
-
-# Reset database
 mix ecto.reset
+
+# Interactive shell
+iex -S mix
 ```
 
-## Contributing
+### Frontend Development
+```bash
+cd drive_box_frontend
+
+# Development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run linting
+npm run lint
+
+# Type checking
+npm run type-check
+```
+
+## 🔐 Security Features
+
+- **OAuth2 Flow**: Secure authentication with major providers
+- **JWT Tokens**: Stateless authentication for API access
+- **Token Refresh**: Automatic token renewal
+- **CORS Protection**: Configurable cross-origin request handling
+- **Input Validation**: Comprehensive request validation
+- **Rate Limiting**: Built-in protection against abuse
+
+## 📖 Documentation
+
+- **API Documentation**: [SWAGGER_DOCUMENTATION.md](SWAGGER_DOCUMENTATION.md)
+- **OAuth Setup**: [OAUTH_SETUP.md](OAUTH_SETUP.md)
+- **Frontend Setup**: [drive_box_frontend/README.md](drive_box_frontend/README.md)
+- **Deployment**: [drive_box_frontend/DEPLOYMENT.md](drive_box_frontend/DEPLOYMENT.md)
+
+## 🚀 Deployment
+
+### Backend Deployment
+```bash
+# Production build
+MIX_ENV=prod mix compile
+MIX_ENV=prod mix assets.deploy
+MIX_ENV=prod mix phx.server
+```
+
+### Frontend Deployment
+```bash
+cd drive_box_frontend
+npm run build
+npm start
+```
+
+### Environment Variables for Production
+- Set all OAuth credentials
+- Configure database URL
+- Set frontend API base URL
+- Configure CORS settings
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+5. Ensure all tests pass (`mix test` for backend, `npm test` for frontend)
+6. Format code (`mix format` for backend, `npm run lint` for frontend)
+7. Commit your changes (`git commit -m 'Add amazing feature'`)
+8. Push to the branch (`git push origin feature/amazing-feature`)
+9. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## 🆘 Support & Troubleshooting
 
-For issues and questions:
-1. Check the documentation
-2. Search existing issues
-3. Create a new issue with detailed information
+### Common Issues
+- **OAuth Callback Errors**: Check redirect URLs in provider settings
+- **Database Connection**: Verify PostgreSQL is running and credentials are correct
+- **Frontend API Errors**: Ensure backend is running on correct port
+- **CORS Issues**: Check CORS configuration in Phoenix
 
-## Roadmap
+### Getting Help
+1. Check the documentation files
+2. Search existing issues on GitHub
+3. Create a new issue with:
+   - Clear description of the problem
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Environment details
 
+## 🗺️ Roadmap
+
+### Short Term
+- [ ] Add file upload progress indicators
+- [ ] Implement file search functionality
+- [ ] Add bulk file operations
+- [ ] Improve error handling and user feedback
+
+### Medium Term
 - [ ] Add support for OneDrive
 - [ ] Implement file syncing between providers
 - [ ] Add webhook support for real-time updates
-- [ ] Implement file versioning
-- [ ] Add admin dashboard
+- [ ] Mobile app development
+
+### Long Term
+- [ ] File versioning system
+- [ ] Admin dashboard and analytics
 - [ ] Performance optimization and caching
+- [ ] Enterprise features and multi-tenancy
+
+---
+
+**Made with ❤️ using Phoenix + Next.js**
